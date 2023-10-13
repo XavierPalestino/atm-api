@@ -9,5 +9,4 @@ import org.springframework.stereotype.Repository;
 public interface BillingRepository
     extends JpaRepository<Billing, Integer>, JpaSpecificationExecutor<Billing> {
 
-  Billing findBillingByImportType(final double importType);
 }
