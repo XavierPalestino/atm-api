@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
@@ -22,100 +23,50 @@ public class WithdrawService {
   private final BalanceRepository balanceRepository;
 
   public AtmDTO withdraw(final AtmForm atmForm) {
-    final Map<Double, Integer> billingInAtm = this.setBilling();
-    final Map<Double, Integer> billingToRetrieve = this.setBilling(billingInAtm);
-
-    final Balance balanceInAtm = this.getAtmBalance(atmForm.getAtmCode());
-
-    double previousImportType = this.findClosestNumber(billingInAtm, atmForm.getMoneyToWithdraw());
-    double moneyToRetrieve = atmForm.getMoneyToWithdraw();
-
-    return this.withdrawProcess(
-        billingInAtm, billingToRetrieve, balanceInAtm, moneyToRetrieve, previousImportType);
+    return withdrawCash(Math.abs(atmForm.getMoneyToWithdraw()), atmForm.getAtmCode());
   }
 
-  public AtmDTO withdrawProcess(
-      final Map<Double, Integer> billingInAtm,
-      final Map<Double, Integer> billingToRetrieve,
-      final Balance balanceInAtm,
-      double moneyToRetrieve,
-      double previousImportType) {
+  public AtmDTO withdrawCash(final double amount, final String atmCode) {
+    List<Billing> cash = billingRepository.findAll(Sort.by(Sort.Order.desc("importType")));
+    final Balance balanceInAtm = this.getAtmBalance(atmCode);
+    Map<Double, Integer> cashToRetrieve = new HashMap<>();
+    double amountRemaining = amount;
+    int amountWithoutCents = (int) amount;
 
-    double moneyPendingToRetrieve = moneyToRetrieve;
-    double moneyRetrieved = 0;
-    int counter = 0;
+    if (amountRemaining - amountWithoutCents == 0.50 || amountRemaining - amountWithoutCents == 0.00) {
 
-    do {
-      final double reduce = this.findClosestNumber(billingInAtm, moneyPendingToRetrieve);
-      final Billing billing = this.importTypeExistence(reduce);
-      if (billing.getBill() > 0) {
-        moneyRetrieved += reduce;
-        moneyPendingToRetrieve -= reduce;
-        counter++;
-        balanceInAtm.setAtmBalance(balanceInAtm.getAtmBalance() - reduce);
-        billing.setBill(billing.getBill() - 1);
-        this.billingRepository.save(billing);
-        billingToRetrieve.replace(previousImportType, counter);
-        if (previousImportType != reduce) {
-          System.out.println("bill: " + previousImportType + "import: " + counter);
-          previousImportType = reduce;
-          counter = 0;
+      for (Billing bill : cash) {
+        if (amountRemaining <= 0) {
+          break;
         }
 
-      } else billingInAtm.remove(reduce);
+        double billValue = bill.getImportType();
+        int billAvailable = bill.getBill();
+        double amountToRetrieve = amountRemaining / billValue;
 
-    } while (moneyRetrieved < moneyToRetrieve);
+        if (amountToRetrieve > 0 && billAvailable > 0) {
+          int billToRetrieve = (int) Math.min(amountToRetrieve, billAvailable);
+          cashToRetrieve.put(billValue, billToRetrieve);
+          amountRemaining -= billValue * billToRetrieve;
+          bill.setBill(billAvailable - billToRetrieve);
+          billingRepository.save(bill);
+        }
+      }
+    } else
+      throw new RuntimeException("Solo contamos con importes de 0.50 centavos");
 
-    this.balanceRepository.save(balanceInAtm);
+    if (amountRemaining > 0) {
+      throw new RuntimeException("No es posible proporcionar el monto solicitado con los billetes disponibles.");
+    }
+    balanceInAtm.setAtmBalance(balanceInAtm.getAtmBalance() - amount);
 
-    return AtmDTO.builder()
-        .balanceInAtm(balanceInAtm.getAtmBalance())
-        .billingsToRetrieve(billingToRetrieve)
-        .build();
-  }
+    balanceRepository.save(balanceInAtm);
 
-  public Map<Double, Integer> setBilling() {
-    final Map<Double, Integer> billToWithdraw = new HashMap<>();
-    List<Billing> billings = this.billingRepository.findAll();
-
-    billings.forEach((bill) -> billToWithdraw.put(bill.getImportType(), bill.getBill()));
-
-    return billToWithdraw;
-  }
-
-  public Map<Double, Integer> setBilling(final Map<Double, Integer> billingInAtm) {
-    final Map<Double, Integer> billToWithdraw = new HashMap<>();
-
-    billingInAtm.forEach(
-        (importType, bill) -> {
-          billToWithdraw.put(importType, 0);
-        });
-
-    return billToWithdraw;
+    return AtmDTO.builder().billingsToRetrieve(cashToRetrieve).balanceInAtm(balanceInAtm.getAtmBalance()).build();
   }
 
   public Balance getAtmBalance(final String atmCode) {
     return balanceRepository.getAllByAtmCode(atmCode);
   }
 
-  private Double findClosestNumber(
-      final Map<Double, Integer> billing, final double moneyToWithdraw) {
-    final double[] minDiference = {-1, Integer.MAX_VALUE};
-
-    billing.forEach(
-        (importType, bill) -> {
-          double diference = moneyToWithdraw - importType;
-
-          if (diference >= 0 && diference < minDiference[1]) {
-            minDiference[0] = importType;
-            minDiference[1] = diference;
-          }
-        });
-
-    return minDiference[0];
-  }
-
-  public Billing importTypeExistence(final double importType) {
-    return this.billingRepository.findBillingByImportType(importType);
-  }
 }
