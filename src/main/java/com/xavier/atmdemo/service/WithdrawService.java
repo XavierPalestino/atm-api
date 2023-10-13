@@ -33,7 +33,8 @@ public class WithdrawService {
     double amountRemaining = amount;
     int amountWithoutCents = (int) amount;
 
-    if (amountRemaining - amountWithoutCents == 0.50 || amountRemaining - amountWithoutCents == 0.00) {
+    if (amountRemaining - amountWithoutCents == 0.50
+        || amountRemaining - amountWithoutCents == 0.00) {
 
       for (Billing bill : cash) {
         if (amountRemaining <= 0) {
@@ -52,21 +53,23 @@ public class WithdrawService {
           billingRepository.save(bill);
         }
       }
-    } else
-      throw new RuntimeException("Solo contamos con importes de 0.50 centavos");
+    } else throw new RuntimeException("Solo contamos con importes de 0.50 centavos");
 
     if (amountRemaining > 0) {
-      throw new RuntimeException("No es posible proporcionar el monto solicitado con los billetes disponibles.");
+      throw new RuntimeException(
+          "No es posible proporcionar el monto solicitado con los billetes disponibles.");
     }
     balanceInAtm.setAtmBalance(balanceInAtm.getAtmBalance() - amount);
 
     balanceRepository.save(balanceInAtm);
 
-    return AtmDTO.builder().billingsToRetrieve(cashToRetrieve).balanceInAtm(balanceInAtm.getAtmBalance()).build();
+    return AtmDTO.builder()
+        .billingsToRetrieve(cashToRetrieve)
+        .balanceInAtm(balanceInAtm.getAtmBalance())
+        .build();
   }
 
   public Balance getAtmBalance(final String atmCode) {
     return balanceRepository.getAllByAtmCode(atmCode);
   }
-
 }
