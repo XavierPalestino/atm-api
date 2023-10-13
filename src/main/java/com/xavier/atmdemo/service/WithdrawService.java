@@ -49,16 +49,15 @@ public class WithdrawService {
       final double reduce = this.findClosestNumber(billingInAtm, moneyPendingToRetrieve);
       final Billing billing = this.importTypeExistence(reduce);
       if (billing.getBill() > 0) {
-
         moneyRetrieved += reduce;
         moneyPendingToRetrieve -= reduce;
-        billingToRetrieve.replace(billing.getImportType(), counter);
+        counter++;
         balanceInAtm.setAtmBalance(balanceInAtm.getAtmBalance() - reduce);
         billing.setBill(billing.getBill() - 1);
         this.billingRepository.save(billing);
-        counter++;
-
+        billingToRetrieve.replace(previousImportType, counter);
         if (previousImportType != reduce) {
+          System.out.println("bill: " + previousImportType + "import: " + counter);
           previousImportType = reduce;
           counter = 0;
         }

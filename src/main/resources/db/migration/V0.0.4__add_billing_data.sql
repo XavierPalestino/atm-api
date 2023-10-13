@@ -8,4 +8,4 @@ INSERT INTO atmtest.billing (id, bill, import_type) VALUES (7, 50, 10.00);
 INSERT INTO atmtest.billing (id, bill, import_type) VALUES (8, 100, 5.00);
 INSERT INTO atmtest.billing (id, bill, import_type) VALUES (9, 200, 2.00);
 INSERT INTO atmtest.billing (id, bill, import_type) VALUES (10, 300, 1.00);
-INSERT INTO atmtest.billing (id, bill, import_type) VALUES (11, 100, 0.50);
+INSERT INTO atmtest.billing (id, bill, import_type) VALUES (11, 100, 0.5);
