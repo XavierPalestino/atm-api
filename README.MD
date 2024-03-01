@@ -45,6 +45,6 @@ For the moment this project only can be tested using curl or postman
 ### 4. Notes
 
 - Deposit endpoint will be added soon.
-- Withdraw endpoint is finished, but will be updated shortly.
+- Withdraw endpoint is finished.
 - Balance check endpoint will be added soon.
 - The project UI will be worked on in another repository.
